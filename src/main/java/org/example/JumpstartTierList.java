@@ -5,56 +5,30 @@ import forge.gui.GuiBase;
 import forge.localinstance.properties.ForgePreferences;
 import forge.model.FModel;
 
-import java.util.Map;
+import java.util.List;
 
-/**
- * Hello world!
- *
- */
-public class JumpstartTierList {
+public abstract class JumpstartTierList {
 
-    public static void main(String[] args) {
+    private List<JumpstartSet> sets;
+    private GameInfo gameInfo;
 
+    public JumpstartTierList() {
         initializeForgeEnvironment();
         var specialBoosters = FModel.getMagicDb().getSpecialBoosters();
-        var gameInfo = GameInfo.getDefaultGameInfo();
-        var jumpstartSets = Map.of(
-                "JMP", new JumpstartSet("JMP", specialBoosters, gameInfo),
-                "J22", new JumpstartSet("J22", specialBoosters, gameInfo),
-                "J25", new JumpstartSet("J25", specialBoosters, gameInfo)
+        this.gameInfo = GameInfo.getDefaultGameInfo();
+        this.sets = List.of(
+                new JumpstartSet("JMP", specialBoosters, gameInfo),
+                new JumpstartSet("J22", specialBoosters, gameInfo),
+                new JumpstartSet("J25", specialBoosters, gameInfo)
         );
-        System.out.println(jumpstartSets);
+    }
 
-        var jmp = jumpstartSets.get("JMP");
+    protected List<JumpstartSet> jumpstartSets() {
+        return sets;
+    }
 
-        for (int i = 0; i < 1000; i++) {
-            var match = JumpstartMatch.randomMatch(jmp);
-            var outcome = match.play();
-            outcome.updateRatings(gameInfo);
-            System.out.println(outcome);
-        }
-
-//        List<CompletableFuture<JumpstartGameOutcome>> outcomeFutures = new ArrayList<>();
-//        for (int i = 0; i < 100; i ++) {
-//            outcomeFutures.add(CompletableFuture.supplyAsync(() -> {
-//                var match = JumpstartMatch.randomMatch(jmp);
-//                var outcome = match.play();
-//                System.out.println(outcome);
-//                return outcome;
-//            }));
-//        }
-//
-//        outcomeFutures.stream().forEach(CompletableFuture::join);
-//
-//        outcomeFutures.stream().forEach(future -> {
-//            future.join().updateRatings(gameInfo);
-//        });
-
-        jmp.boosters().stream()
-                .sorted(JumpstartBooster.bestRatingFirst())
-                .forEach(b -> {
-                    System.out.println(b.name() + ": " + b.rating());
-                });
+    protected GameInfo gameInfo() {
+        return gameInfo;
     }
 
     private static void initializeForgeEnvironment() {
@@ -65,5 +39,4 @@ public class JumpstartTierList {
             return null;
         });
     }
-
 }

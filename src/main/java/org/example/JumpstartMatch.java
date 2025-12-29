@@ -1,5 +1,6 @@
 package org.example;
 
+import forge.ai.AIOption;
 import forge.ai.LobbyPlayerAi;
 import forge.game.GameRules;
 import forge.game.GameType;
@@ -9,6 +10,7 @@ import forge.game.player.RegisteredPlayer;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 public class JumpstartMatch {
 

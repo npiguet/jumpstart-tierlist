@@ -7,7 +7,7 @@ import junit.framework.TestSuite;
 /**
  * Unit test for simple App.
  */
-public class JumpstartTierListTest
+public class JumpstartTierListPlayerTest
     extends TestCase
 {
     /**
@@ -15,7 +15,7 @@ public class JumpstartTierListTest
      *
      * @param testName name of the test case
      */
-    public JumpstartTierListTest(String testName )
+    public JumpstartTierListPlayerTest(String testName )
     {
         super( testName );
     }
@@ -25,7 +25,7 @@ public class JumpstartTierListTest
      */
     public static Test suite()
     {
-        return new TestSuite( JumpstartTierListTest.class );
+        return new TestSuite( JumpstartTierListPlayerTest.class );
     }
 
     /**

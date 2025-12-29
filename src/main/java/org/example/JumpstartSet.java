@@ -42,6 +42,10 @@ public class JumpstartSet {
         return boosters;
     }
 
+    public String code(){
+        return code;
+    }
+
     public String toString() {
         return boosters.stream()
                 .map(Objects::toString)
