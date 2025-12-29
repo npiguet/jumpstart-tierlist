@@ -18,6 +18,7 @@ public class JumpstartTierListRatings extends JumpstartTierList {
                 outcome.updateRatings(gameInfo());
             }
 
+            System.out.println("Name,Games Played,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose");
             set.boosters().stream()
                     .sorted(JumpstartBooster.bestRatingFirst())
                     .forEach(b -> {
@@ -34,6 +35,8 @@ public class JumpstartTierListRatings extends JumpstartTierList {
                 booster.winRate() + "," +
                 rating.getConservativeRating() + "," +
                 rating.getMean() + "," +
-                rating.getStandardDeviation();
+                rating.getStandardDeviation() + "," +
+                booster.averageTurnsTakenToWin() + "," +
+                booster.averageTurnsTakenToLose();
     }
 }

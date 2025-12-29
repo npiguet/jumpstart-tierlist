@@ -15,6 +15,8 @@ public class JumpstartBooster {
     private Rating rating;
     private int wins;
     private int losses;
+    private int turnsTakenToWin;
+    private int turnsTakenToLose;
 
     public JumpstartBooster(String setCode, String name, List<PaperCard> cards, GameInfo gameInfo) {
         this.setCode = setCode;
@@ -39,12 +41,22 @@ public class JumpstartBooster {
         this.rating = rating;
     }
 
-    public void recordWin() {
+    public void recordWin(int turnsTaken) {
         wins++;
+        turnsTakenToWin += turnsTaken;
     }
 
-    public void recordLoss() {
+    public void recordLoss(int turnsTaken) {
         losses++;
+        turnsTakenToLose += turnsTaken;
+    }
+
+    public double averageTurnsTakenToWin() {
+        return turnsTakenToWin / (double) wins;
+    }
+
+    public double averageTurnsTakenToLose() {
+        return turnsTakenToLose / (double) losses;
     }
 
     public int gamesPlayed() {
