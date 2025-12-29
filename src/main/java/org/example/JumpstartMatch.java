@@ -43,7 +43,11 @@ public class JumpstartMatch {
         var duration = Duration.between(startTime, Instant.now());
 
         var outcome = game.getOutcome();
-        if (outcome.getWinningLobbyPlayer().getName().equals("p1")) {
+        var winner = outcome.getWinningLobbyPlayer();
+        if(winner == null){
+            return null;
+        }
+        if (winner.getName().equals("p1")) {
             return new JumpstartGameOutcome(p1Deck, p2Deck, duration, outcome.getLastTurnNumber());
         }
         return new JumpstartGameOutcome(p2Deck, p1Deck, duration, outcome.getLastTurnNumber());

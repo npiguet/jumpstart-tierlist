@@ -16,6 +16,8 @@ public record JumpstartGameOutcome(JumpstartDeck winner, JumpstartDeck loser, Du
                 List.of(newTeam(winner), newTeam(loser)),
                 1, 2
         );
+        winner.getBoosters().stream().distinct().forEach(JumpstartBooster::recordWin);
+        loser.getBoosters().stream().distinct().forEach(JumpstartBooster::recordLoss);
         updateRatings(winner, newRatings);
         updateRatings(loser, newRatings);
     }
@@ -37,7 +39,8 @@ public record JumpstartGameOutcome(JumpstartDeck winner, JumpstartDeck loser, Du
 
     private static Team newTeam(JumpstartDeck deck) {
         var team = new Team();
-        deck.getBoosters()
+        deck.getBoosters().stream()
+                .distinct()
                 .forEach(booster -> team.addPlayer(
                         new Player<>(booster),
                         booster.rating()

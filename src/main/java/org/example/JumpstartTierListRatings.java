@@ -21,9 +21,19 @@ public class JumpstartTierListRatings extends JumpstartTierList {
             set.boosters().stream()
                     .sorted(JumpstartBooster.bestRatingFirst())
                     .forEach(b -> {
-                        System.out.println(b.name() + ": " + b.rating().getConservativeRating() + " -> " + b.rating());
+                        System.out.println(toCsv(b));
                     });
             System.out.println("\n\n");
         }
+    }
+
+    public String toCsv(JumpstartBooster booster) {
+        var rating = booster.rating();
+        return booster.name() + "," +
+                booster.gamesPlayed() + "," +
+                booster.winRate() + "," +
+                rating.getConservativeRating() + "," +
+                rating.getMean() + "," +
+                rating.getStandardDeviation();
     }
 }

@@ -17,7 +17,6 @@ public class JumpstartTierListPlayer extends JumpstartTierList {
 
         var player = new JumpstartTierListPlayer();
         player.playGames(100_000);
-
     }
 
     public void playGames(int numberOfGames) throws IOException {
@@ -26,30 +25,10 @@ public class JumpstartTierListPlayer extends JumpstartTierList {
             var setRecord = new JumpstartGameRecord(set.code());
             var match = JumpstartMatch.randomMatch(set);
             var outcome = match.play();
-            setRecord.append(outcome);
-            System.out.println("Game " + (i + 1) + ": " + outcome);
+            if (outcome != null) {
+                setRecord.append(outcome);
+                System.out.println("Game " + (i + 1) + ": " + outcome);
+            }
         }
-
-//        List<CompletableFuture<JumpstartGameOutcome>> outcomeFutures = new ArrayList<>();
-//        for (int i = 0; i < 100; i ++) {
-//            outcomeFutures.add(CompletableFuture.supplyAsync(() -> {
-//                var match = JumpstartMatch.randomMatch(jmp);
-//                var outcome = match.play();
-//                System.out.println(outcome);
-//                return outcome;
-//            }));
-//        }
-//
-//        outcomeFutures.stream().forEach(CompletableFuture::join);
-//
-//        outcomeFutures.stream().forEach(future -> {
-//            future.join().updateRatings(gameInfo);
-//        });
-
-//        jmp.boosters().stream()
-//                .sorted(JumpstartBooster.bestRatingFirst())
-//                .forEach(b -> {
-//                    System.out.println(b.name() + ": " + b.rating());
-//                });
     }
 }

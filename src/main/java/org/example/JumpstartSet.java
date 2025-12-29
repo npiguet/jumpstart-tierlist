@@ -35,7 +35,8 @@ public class JumpstartSet {
     }
 
     public JumpstartDeck randomDeck() {
-        return new JumpstartDeck(randomBooster(), randomBooster());
+        var booster = randomBooster();
+        return new JumpstartDeck(booster, booster);
     }
 
     public List<JumpstartBooster> boosters() {
