@@ -6,10 +6,10 @@ import forge.card.MagicColor;
 import java.io.IOException;
 import java.util.*;
 
-public class JumpstartTierListRatings extends JumpstartTierList {
+public class TierCalculatorApp extends JumpstartTierList {
 
     public static void main(String[] args) throws IOException {
-        var ratings = new JumpstartTierListRatings();
+        var ratings = new TierCalculatorApp();
         ratings.calculateBoosterRatings();
         ratings.calculateDeckRatings();
     }

@@ -1,6 +1,5 @@
 package org.example;
 
-import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
@@ -8,10 +7,10 @@ import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
-public class JumpstartTierListSupervisor {
+public class SupervisorApp {
     private static final int PROCESS_COUNT = 24;
     private static final String JAVA_CMD = "java";
-    private static final String WORKER_CLASS = JumpstartTierListPlayer.class.getName();
+    private static final String WORKER_CLASS = WorkerApp.class.getName();
 
     private static final AtomicBoolean shuttingDown = new AtomicBoolean(false);
     private static final List<Process> runningProcesses = new ArrayList<>();

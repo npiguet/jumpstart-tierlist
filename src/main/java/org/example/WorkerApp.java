@@ -8,7 +8,7 @@ import java.util.function.Supplier;
  * Hello world!
  *
  */
-public class JumpstartTierListPlayer extends JumpstartTierList {
+public class WorkerApp extends JumpstartTierList {
     private static final Random random = new Random();
 
     public static void main(String[] args) throws IOException {
@@ -16,7 +16,7 @@ public class JumpstartTierListPlayer extends JumpstartTierList {
         // So we'll separate playing games from calculating rating results. And we'll accumulate results for games
         // over multiple runs
 
-        var player = new JumpstartTierListPlayer();
+        var player = new WorkerApp();
         player.playGames(100_000, player::randomOwnedMatch);
     }
 
