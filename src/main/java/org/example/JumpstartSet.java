@@ -1,16 +1,18 @@
 package org.example;
 
 import de.gesundkrank.jskills.GameInfo;
-import forge.deck.Deck;
 import forge.item.SealedTemplate;
 import forge.item.generation.UnOpenedProduct;
 import forge.util.storage.IStorage;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toMap;
 
 public class JumpstartSet {
 
@@ -18,15 +20,9 @@ public class JumpstartSet {
     private final String code;
     private final List<JumpstartBooster> boosters;
 
-    public JumpstartSet(String code, IStorage<SealedTemplate> specialBoosters, GameInfo gameInfo) {
+    private JumpstartSet(String code, List<JumpstartBooster> boosters) {
         this.code = code;
-        this.boosters = specialBoosters.stream()
-                .filter(template -> template.getName().startsWith(code))
-                .map(template -> {
-                    var cards = new UnOpenedProduct(template).get();
-                    return new JumpstartBooster(code, template.getName(), cards, gameInfo);
-                })
-                .toList();
+        this.boosters = boosters;
     }
 
     public JumpstartBooster randomBooster() {
@@ -35,15 +31,14 @@ public class JumpstartSet {
     }
 
     public JumpstartDeck randomDeck() {
-        var booster = randomBooster();
-        return new JumpstartDeck(booster, booster);
+        return new JumpstartDeck(randomBooster(), randomBooster());
     }
 
     public List<JumpstartBooster> boosters() {
         return boosters;
     }
 
-    public String code(){
+    public String code() {
         return code;
     }
 
@@ -51,5 +46,33 @@ public class JumpstartSet {
         return boosters.stream()
                 .map(Objects::toString)
                 .collect(Collectors.joining("\n", code + "\n", ""));
+    }
+
+    public static JumpstartSet wotcSet(String code, IStorage<SealedTemplate> specialBoosters, GameInfo gameInfo) {
+        var boosters = specialBoosters.stream()
+                .filter(template -> template.getName().startsWith(code))
+                .map(template -> {
+                    var cards = new UnOpenedProduct(template).get();
+                    return new JumpstartBooster(code, template.getName(), cards, gameInfo);
+                })
+                .toList();
+
+        return new JumpstartSet(code, boosters);
+    }
+
+    public static JumpstartSet cubeSet(String code, List<String> boosterNames, IStorage<SealedTemplate> specialBoosters, GameInfo gameInfo) {
+        var templatesByName = specialBoosters.stream().collect(toMap(SealedTemplate::getName, Function.identity()));
+        var boosters = boosterNames.stream()
+                .map(name -> {
+                    var template = templatesByName.get(name);
+                    return template;
+                })
+                .map(template -> {
+                    var cards = new UnOpenedProduct(template).get();
+                    return new JumpstartBooster(code, template.getName(), cards, gameInfo);
+                })
+                .toList();
+
+        return new JumpstartSet(code, boosters);
     }
 }

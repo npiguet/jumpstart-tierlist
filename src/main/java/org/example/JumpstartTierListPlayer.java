@@ -2,6 +2,7 @@ package org.example;
 
 import java.io.IOException;
 import java.util.Random;
+import java.util.function.Supplier;
 
 /**
  * Hello world!
@@ -16,19 +17,67 @@ public class JumpstartTierListPlayer extends JumpstartTierList {
         // over multiple runs
 
         var player = new JumpstartTierListPlayer();
-        player.playGames(100_000);
+        player.playGames(100_000, player::randomOwnedMatch);
     }
 
-    public void playGames(int numberOfGames) throws IOException {
+    public void playGames(int numberOfGames, Supplier<MatchAndRecord> matchSupplier) throws IOException {
         for (int i = 0; i < numberOfGames; i++) {
-            var set = jumpstartSets().get(random.nextInt(jumpstartSets().size()));
-            var setRecord = new JumpstartGameRecord(set.code());
-            var match = JumpstartMatch.randomMatch(set);
-            var outcome = match.play();
+            var matchAndRecord = matchSupplier.get();
+            var outcome = matchAndRecord.match.play();
             if (outcome != null) {
-                setRecord.append(outcome);
+                matchAndRecord.record.append(outcome);
                 System.out.println("Game " + (i + 1) + ": " + outcome);
             }
         }
+    }
+
+    private MatchAndRecord randomCubeMatch() {
+        return new MatchAndRecord(
+                JumpstartMatch.randomMatch(cube()),
+                new JumpstartGameRecord("cube")
+        );
+    }
+
+    private MatchAndRecord randomOwnedMatch() {
+        return new MatchAndRecord(
+                JumpstartMatch.randomMatch(owned()),
+                new JumpstartGameRecord("owned")
+        );
+    }
+
+    private MatchAndRecord randomMixedMatch() {
+        return new MatchAndRecord(
+                new JumpstartMatch(randomMixedSetDeck(), randomMixedSetDeck()),
+                new JumpstartGameRecord("mixed")
+        );
+    }
+
+    private MatchAndRecord randomSingleSetMatch() {
+        var set = randomSet();
+        return new MatchAndRecord(
+                JumpstartMatch.randomMatch(set),
+                new JumpstartGameRecord(set.code())
+        );
+    }
+
+    private MatchAndRecord doubleBoosterSingleSetMatch() {
+        var set = randomSet();
+        var b1 = set.randomBooster();
+        var b2 = set.randomBooster();
+        return new MatchAndRecord(
+                new JumpstartMatch(new JumpstartDeck(b1, b1), new JumpstartDeck(b2, b2)),
+                new JumpstartGameRecord(set.code())
+        );
+    }
+
+    record MatchAndRecord(JumpstartMatch match, JumpstartGameRecord record) {
+    }
+
+    public JumpstartSet randomSet() {
+        return jumpstartSets().get(random.nextInt(jumpstartSets().size()));
+    }
+
+    public JumpstartDeck randomMixedSetDeck() {
+        return new JumpstartDeck(randomSet().randomBooster(), randomSet().randomBooster());
     }
 }

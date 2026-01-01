@@ -16,8 +16,8 @@ public record JumpstartGameOutcome(JumpstartDeck winner, JumpstartDeck loser, Du
                 List.of(newTeam(winner), newTeam(loser)),
                 1, 2
         );
-        winner.getBoosters().stream().distinct().forEach(b -> b.recordWin(turnCount));
-        loser.getBoosters().stream().distinct().forEach(b -> b.recordLoss(turnCount));
+        winner.getBoosters().stream().distinct().forEach(b -> b.stats().recordWin(turnCount));
+        loser.getBoosters().stream().distinct().forEach(b -> b.stats().recordLoss(turnCount));
         updateRatings(winner, newRatings);
         updateRatings(loser, newRatings);
     }
@@ -29,7 +29,7 @@ public record JumpstartGameOutcome(JumpstartDeck winner, JumpstartDeck loser, Du
     private static void updateRatings(JumpstartBooster booster, Map<IPlayer, Rating> newRatings) {
         newRatings.entrySet().stream()
                 .filter(entry -> getBooster(entry.getKey()) == booster)
-                .forEach(entry -> getBooster(entry.getKey()).rating(entry.getValue()));
+                .forEach(entry -> getBooster(entry.getKey()).stats().rating(entry.getValue()));
     }
 
     private static JumpstartBooster getBooster(IPlayer player) {
@@ -43,7 +43,7 @@ public record JumpstartGameOutcome(JumpstartDeck winner, JumpstartDeck loser, Du
                 .distinct()
                 .forEach(booster -> team.addPlayer(
                         new Player<>(booster),
-                        booster.rating()
+                        booster.stats().rating()
                 ));
         return team;
     }

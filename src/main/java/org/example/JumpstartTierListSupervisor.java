@@ -1,13 +1,15 @@
 package org.example;
 
+import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
 public class JumpstartTierListSupervisor {
-    private static final int PROCESS_COUNT = 12;
+    private static final int PROCESS_COUNT = 24;
     private static final String JAVA_CMD = "java";
     private static final String WORKER_CLASS = JumpstartTierListPlayer.class.getName();
 
@@ -28,6 +30,10 @@ public class JumpstartTierListSupervisor {
             Thread monitor = new Thread(() -> monitorProcess(id));
             monitor.start();
         }
+
+        var mixed = new JumpstartGameRecord("owned");
+
+        mixed.monitor(Duration.ofSeconds(30));
 
         // Keep supervisor alive
         Thread.currentThread().join();
@@ -71,7 +77,7 @@ public class JumpstartTierListSupervisor {
 
         ProcessBuilder pb = new ProcessBuilder(
                 JAVA_CMD,
-                "-Xmx2048m",
+                "-Xmx1200m",
                 "-cp",
                 System.getProperty("java.class.path"),
                 WORKER_CLASS,

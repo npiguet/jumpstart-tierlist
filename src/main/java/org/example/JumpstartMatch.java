@@ -28,8 +28,8 @@ public class JumpstartMatch {
 
     public JumpstartGameOutcome play() {
         var players = List.of(
-                new RegisteredPlayer(p1Deck.toForgeDeck()).setPlayer(new LobbyPlayerAi("p1", null)),
-                new RegisteredPlayer(p2Deck.toForgeDeck()).setPlayer(new LobbyPlayerAi("p2", null))
+                new RegisteredPlayer(p1Deck.forgeDeck()).setPlayer(new LobbyPlayerAi("p1", null)),
+                new RegisteredPlayer(p2Deck.forgeDeck()).setPlayer(new LobbyPlayerAi("p2", null))
         );
 
         var rules = new GameRules(GameType.Constructed);
