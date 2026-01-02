@@ -1,19 +1,12 @@
 package org.example;
 
-import forge.card.CardRules;
-import forge.card.CardType;
 import forge.card.MagicColor;
-import forge.card.mana.ManaAtom;
-import forge.card.mana.ManaCost;
-import forge.card.mana.ManaCostShard;
-import forge.deck.CardPool;
 import forge.deck.Deck;
 import forge.deck.DeckSection;
-import forge.item.PaperCard;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 public class JumpstartDeck {
@@ -42,5 +35,21 @@ public class JumpstartDeck {
 
     public String toString() {
         return boosters.get(0).name() + " & " + boosters.get(1).name();
+    }
+
+    public MagicColor.Color color() {
+        return MagicColor.Color.COLORLESS;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        JumpstartDeck that = (JumpstartDeck) o;
+        return Objects.equals(boosters, that.boosters);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(boosters);
     }
 }

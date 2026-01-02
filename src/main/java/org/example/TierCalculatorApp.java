@@ -5,110 +5,110 @@ import forge.card.MagicColor;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
 
-public class TierCalculatorApp extends JumpstartTierList {
+public class TierCalculatorApp {
+
+    private final JumpstartEnvironment environment;
+    private final Tournament tournament;
+    private final GameInfo gameInfo = GameInfo.getDefaultGameInfo();
+
+    public TierCalculatorApp(JumpstartEnvironment environment, Tournament tournament) {
+        this.environment = environment;
+        this.tournament = tournament;
+    }
 
     public static void main(String[] args) throws IOException {
-        var ratings = new TierCalculatorApp();
-        ratings.calculateBoosterRatings();
-        ratings.calculateDeckRatings();
+        var environment = new WotcJumpstartEnvironment();
+
+        var tournament = SetBasedTournament.withRandomBoosters(environment, false);
+        //var tournament = CubeRandomTournament.withMyCube(environment);
+
+        var ratings = new TierCalculatorApp(environment, tournament);
+        ratings.printBoosterStats();
+        ratings.printDeckStats();
     }
 
-    public void calculateBoosterRatings() throws IOException {
-        var allBoosters = jumpstartSets().stream().flatMap(set -> set.boosters().stream()).toList();
+    private void printBoosterStats() throws IOException {
+        for (var record : tournament.getRecords()) {
+            var statsByBooster = calculateStats(record, JumpstartDeck::getBoosters);
 
-        var record = new JumpstartGameRecord("owned");
-        for (var outcome : record.load(allBoosters)) {
-            outcome.updateRatings(gameInfo());
+            System.out.println("Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose");
+            statsByBooster.entrySet().stream()
+                    .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
+                    .forEach(e -> {
+                        System.out.println(toCsv(e.getKey().name(), e.getKey().color(), e.getValue()));
+                    });
+            System.out.println("\n\n");
         }
-
-        var allBoostersPlayed = allBoosters.stream().filter(booster -> booster.stats().gamesPlayed() > 0).toList();
-
-        calculateTiers(allBoostersPlayed.stream().map(JumpstartBooster::stats).toList());
-
-        System.out.println("Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose");
-        allBoostersPlayed.stream()
-                .sorted(JumpstartBooster.bestRatingFirst())
-                .forEach(b -> {
-                    System.out.println(toCsv(b));
-                });
-        System.out.println("\n\n");
     }
 
-    private void calculateTiers(List<Stats> list) {
+    private void printDeckStats() throws IOException {
+        for (var record : tournament.getRecords()) {
+            var statsByDeck = calculateStats(record, List::of);
+
+            System.out.println("Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose");
+            statsByDeck.entrySet().stream()
+                    .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
+                    .forEach(e -> {
+                        System.out.println(toCsv(e.getKey().toString(), e.getKey().color(), e.getValue()));
+                    });
+            System.out.println("\n\n");
+        }
+    }
+
+    private <K> Map<K, Stats> calculateStats(JumpstartGameRecord record, Function<JumpstartDeck, List<K>> keyFunction) throws IOException {
+        var allBoosters = environment.boosters();
+        var outcomes = record.load(allBoosters);
+
+        var stats = calculateWinRecord(outcomes, keyFunction);
+        calculateRatings(outcomes, keyFunction, stats, 10);
+        calculateTiers(stats.values());
+
+        return stats;
+    }
+
+    private <K> Map<K, Stats> calculateWinRecord(List<JumpstartGameOutcome> allOutcomes, Function<JumpstartDeck, List<K>> keyFunction) {
+        var stats = new HashMap<K, Stats>();
+        for (var outcome : allOutcomes) {
+            var winKeys = keyFunction.apply(outcome.winner());
+            winKeys.forEach(k -> stats.computeIfAbsent(k, k2 -> new Stats(gameInfo)).recordWin(outcome.turnCount()));
+            var loseKeys = keyFunction.apply(outcome.loser());
+            loseKeys.forEach(k -> stats.computeIfAbsent(k, k2 -> new Stats(gameInfo)).recordLoss(outcome.turnCount()));
+        }
+        return stats;
+    }
+
+    private <K> void calculateRatings(List<JumpstartGameOutcome> outcomes, Function<JumpstartDeck, List<K>> keyFunction, Map<K, Stats> stats, int rounds) throws IOException {
+        for(int i = 0; i < rounds; i ++) {
+            var shuffled = new ArrayList<>(outcomes);
+            Collections.shuffle(shuffled);
+            for (var outcome : outcomes) {
+                var winTeam = new Team();
+                var loseTeam = new Team();
+
+                var winKeys = keyFunction.apply(outcome.winner());
+                var loseKeys = keyFunction.apply(outcome.loser());
+
+                winKeys.forEach(k -> winTeam.addPlayer(new Player<>(k), stats.get(k).rating()));
+                loseKeys.forEach(k -> loseTeam.addPlayer(new Player<>(k), stats.get(k).rating()));
+
+                var newRatings = TrueSkillCalculator.calculateNewRatings(gameInfo, List.of(winTeam, loseTeam),1, 2);
+                newRatings.forEach((player, newRating) -> stats.get(((Player<K>)player).getId()).rating(newRating));
+            }
+        }
+    }
+
+    private void calculateTiers(Collection<Stats> list) {
         double high = list.stream().mapToDouble(s -> s.rating().getConservativeRating()).max().orElseThrow();
         double low = list.stream().mapToDouble(s -> s.rating().getConservativeRating()).min().orElseThrow();
         double step = (high - low) / Tier.values().length;
         list.forEach(stat -> {
             double rating = stat.rating().getConservativeRating();
-            int tierIndex = Tier.values().length - (int)Math.ceil((rating - low) / step);
+            int tierIndex = Tier.values().length - (int) Math.ceil((rating - low) / step);
             // the lowest stat will get tierIndex=6, it should be normalized back to 5
             stat.tier(Tier.values()[Math.min(tierIndex, 5)]);
         });
-    }
-
-    public void calculateDeckRatings() throws IOException {
-        Map<String, Stats> statsPerDeck = new HashMap<>();
-
-        var allBoosters = jumpstartSets().stream().flatMap(set -> set.boosters().stream()).toList();
-        var record = new JumpstartGameRecord("owned");
-        var allOutcomes = record.load(allBoosters);
-
-        updateWinRecord(allOutcomes, statsPerDeck);
-        calculateRatings(allOutcomes, statsPerDeck);
-
-        System.out.println("Name,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose");
-        statsPerDeck.entrySet().stream()
-                .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
-                .forEach(e -> {
-                    System.out.println(toCsv(e.getKey(), MagicColor.Color.COLORLESS, e.getValue()));
-                });
-    }
-
-    private void updateWinRecord(List<JumpstartGameOutcome> allOutcomes, Map<String, Stats> statsPerDeck) {
-        for (var outcome : allOutcomes) {
-            String winKey = outcome.winner().toString();
-            Stats winStats = statsPerDeck.computeIfAbsent(winKey, k -> new Stats(gameInfo()));
-            String loseKey = outcome.loser().toString();
-            Stats loseStats = statsPerDeck.computeIfAbsent(loseKey, k -> new Stats(gameInfo()));
-
-            winStats.recordWin(outcome.turnCount());
-            loseStats.recordLoss(outcome.turnCount());
-        }
-    }
-
-    private void calculateRatings(List<JumpstartGameOutcome> outcomes, Map<String, Stats> statsPerDeck) throws IOException {
-//        var shuffled = new ArrayList<>(outcomes);
-//        Collections.shuffle(shuffled);
-        for (var outcome : outcomes) {
-            String winKey = outcome.winner().toString();
-            Stats winStats = statsPerDeck.computeIfAbsent(winKey, k -> new Stats(gameInfo()));
-            String loseKey = outcome.loser().toString();
-            Stats loseStats = statsPerDeck.computeIfAbsent(loseKey, k -> new Stats(gameInfo()));
-
-            var newRatings = TrueSkillCalculator.calculateNewRatings(
-                    gameInfo(),
-                    List.of(
-                            new Team(new Player<>(winKey), winStats.rating()),
-                            new Team(new Player<>(loseKey), loseStats.rating())
-                    ),
-                    1, 2
-            );
-            winStats.rating(getRating(winKey, newRatings));
-            loseStats.rating(getRating(loseKey, newRatings));
-        }
-    }
-
-    private static Rating getRating(String key, Map<IPlayer, Rating> ratings) {
-        return ratings.entrySet().stream()
-                .filter(e -> ((Player<?>) e.getKey()).getId().equals(key))
-                .map(Map.Entry::getValue)
-                .findFirst()
-                .orElseThrow();
-    }
-
-    public String toCsv(JumpstartBooster booster) {
-        return toCsv(booster.name(), booster.color(), booster.stats());
     }
 
     public String toCsv(String name, MagicColor.Color color, Stats stats) {

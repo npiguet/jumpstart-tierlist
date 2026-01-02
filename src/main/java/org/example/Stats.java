@@ -3,8 +3,6 @@ package org.example;
 import de.gesundkrank.jskills.GameInfo;
 import de.gesundkrank.jskills.Rating;
 
-import java.util.Comparator;
-
 public class Stats {
     private Rating rating;
     private int wins;

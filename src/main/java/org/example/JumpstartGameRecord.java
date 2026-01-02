@@ -15,19 +15,24 @@ import java.util.stream.Collectors;
 
 public class JumpstartGameRecord {
 
-    private final String setCode;
+    private final String recordName;
+    private final Path filePath;
 
-    public JumpstartGameRecord(String setCode) {
-        this.setCode = setCode;
+    public JumpstartGameRecord(String recordName) {
+        this(recordName, null);
     }
 
-    private Path getRecordFilePath() {
-        return Path.of("..", "jumpstart-tierlist", "records", setCode + ".csv");
+    public JumpstartGameRecord(String recordName, Path folder) {
+        this.recordName = recordName;
+        var path = Path.of("..", "jumpstart-tierlist", "records");
+        if(folder != null) {
+            path = path.resolve(folder);
+        }
+        this.filePath = path.resolve(recordName + ".csv");
     }
 
     public void append(JumpstartGameOutcome outcome) throws IOException {
-        var path = getRecordFilePath();
-        try (var writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND, StandardOpenOption.WRITE)) {
+        try (var writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND, StandardOpenOption.WRITE)) {
             writer.write(outcome.toCsv());
             writer.write('\n');
         }
@@ -39,7 +44,7 @@ public class JumpstartGameRecord {
                 Function.identity()
         ));
 
-        return Files.readAllLines(getRecordFilePath()).stream()
+        return Files.readAllLines(filePath).stream()
                 .map(line -> JumpstartGameOutcome.fromCSV(line, boostersByName))
                 .toList();
     }
@@ -56,11 +61,10 @@ public class JumpstartGameRecord {
                     long newLines = 0;
                     long newPosition;
 
-                    try (RandomAccessFile raf = new RandomAccessFile(getRecordFilePath().toFile(), "r")) {
+                    try (RandomAccessFile raf = new RandomAccessFile(filePath.toFile(), "r")) {
                         raf.seek(lastPosition);
 
-                        String line;
-                        while ((line = raf.readLine()) != null) {
+                        while (raf.readLine() != null) {
                             newLines++;
                         }
 
@@ -75,7 +79,7 @@ public class JumpstartGameRecord {
 
                         System.out.printf(
                                 "File %s: %.2f lines/sec (%d lines in %.2f sec)%n",
-                                getRecordFilePath().getFileName(), rate, newLines, seconds
+                                filePath.getFileName(), rate, newLines, seconds
                         );
                     }
 
