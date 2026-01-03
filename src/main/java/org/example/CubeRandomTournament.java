@@ -99,7 +99,7 @@ public class CubeRandomTournament implements Tournament {
     private final JumpstartGameRecord record;
 
     private CubeRandomTournament(String cubeName, List<String> boosterNames, JumpstartEnvironment environment) {
-        this.record = new JumpstartGameRecord(cubeName, Path.of("cubes"));
+        this.record = new JumpstartGameRecord(cubeName, Path.of("cubes"), JumpstartGameOutcome::hasNoDuplicateBoosters);
         this.cubeSet = JumpstartSet.cubeSet("cube", boosterNames, environment);
     }
 

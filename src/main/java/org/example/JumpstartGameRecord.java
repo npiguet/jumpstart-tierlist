@@ -11,24 +11,31 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class JumpstartGameRecord {
 
     private final String recordName;
     private final Path filePath;
+    private final Predicate<JumpstartGameOutcome> outcomeFilter;
 
     public JumpstartGameRecord(String recordName) {
         this(recordName, null);
     }
 
-    public JumpstartGameRecord(String recordName, Path folder) {
+    public JumpstartGameRecord(String recordName, Path filePath) {
+        this(recordName, filePath, outcome -> true);
+    }
+
+    public JumpstartGameRecord(String recordName, Path folder, Predicate<JumpstartGameOutcome> outcomeFilter) {
         this.recordName = recordName;
         var path = Path.of("..", "jumpstart-tierlist", "records");
-        if(folder != null) {
+        if (folder != null) {
             path = path.resolve(folder);
         }
         this.filePath = path.resolve(recordName + ".csv");
+        this.outcomeFilter = outcomeFilter;
     }
 
     public void append(JumpstartGameOutcome outcome) throws IOException {
@@ -46,6 +53,7 @@ public class JumpstartGameRecord {
 
         return Files.readAllLines(filePath).stream()
                 .map(line -> JumpstartGameOutcome.fromCSV(line, boostersByName))
+                .filter(outcomeFilter)
                 .toList();
     }
 

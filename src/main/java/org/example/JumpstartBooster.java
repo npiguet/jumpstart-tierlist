@@ -3,6 +3,7 @@ package org.example;
 import forge.card.MagicColor;
 import forge.item.PaperCard;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
@@ -38,6 +39,14 @@ public class JumpstartBooster {
 
     public MagicColor.Color color() {
         return color;
+    }
+
+    public static List<MagicColor.Color> colors(List<JumpstartBooster> boosters) {
+        return boosters.stream()
+                .map(JumpstartBooster::color)
+                .distinct()
+                .sorted(Comparator.comparing(MagicColor.Color::ordinal))
+                .toList();
     }
 
     private static MagicColor.Color getCardColorIfSingle(PaperCard card) {

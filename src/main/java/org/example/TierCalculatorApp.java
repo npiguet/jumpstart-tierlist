@@ -21,8 +21,9 @@ public class TierCalculatorApp {
     public static void main(String[] args) throws IOException {
         var environment = new WotcJumpstartEnvironment();
 
-        var tournament = SetBasedTournament.withRandomBoosters(environment, false);
+        //var tournament = SetBasedTournament.withRandomBoosters(environment, false);
         //var tournament = CubeRandomTournament.withMyCube(environment);
+        var tournament = CubeRandomTournament.withMyOwnedBoosters(environment);
 
         var ratings = new TierCalculatorApp(environment, tournament);
         ratings.printBoosterStats();
@@ -37,7 +38,7 @@ public class TierCalculatorApp {
             statsByBooster.entrySet().stream()
                     .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
                     .forEach(e -> {
-                        System.out.println(toCsv(e.getKey().name(), e.getKey().color(), e.getValue()));
+                        System.out.println(toCsv(e.getKey().name(), e.getKey().color().getShortName(), e.getValue()));
                     });
             System.out.println("\n\n");
         }
@@ -80,7 +81,7 @@ public class TierCalculatorApp {
     }
 
     private <K> void calculateRatings(List<JumpstartGameOutcome> outcomes, Function<JumpstartDeck, List<K>> keyFunction, Map<K, Stats> stats, int rounds) throws IOException {
-        for(int i = 0; i < rounds; i ++) {
+        for (int i = 0; i < rounds; i++) {
             var shuffled = new ArrayList<>(outcomes);
             Collections.shuffle(shuffled);
             for (var outcome : outcomes) {
@@ -93,10 +94,14 @@ public class TierCalculatorApp {
                 winKeys.forEach(k -> winTeam.addPlayer(new Player<>(k), stats.get(k).rating()));
                 loseKeys.forEach(k -> loseTeam.addPlayer(new Player<>(k), stats.get(k).rating()));
 
-                var newRatings = TrueSkillCalculator.calculateNewRatings(gameInfo, List.of(winTeam, loseTeam),1, 2);
-                newRatings.forEach((player, newRating) -> stats.get(((Player<K>)player).getId()).rating(newRating));
+                var newRatings = TrueSkillCalculator.calculateNewRatings(gameInfo, List.of(winTeam, loseTeam), 1, 2);
+                newRatings.forEach((player, newRating) -> stats.get(((Player<K>) player).getId()).rating(newRating));
             }
         }
+
+        // Normalize ratings so that the lowest is 0
+        var min = stats.values().stream().mapToDouble(s -> s.rating().getConservativeRating()).min().orElseThrow();
+        stats.values().stream().forEach(s -> s.rating(new Rating(s.rating().getMean() - min, s.rating().getStandardDeviation())));
     }
 
     private void calculateTiers(Collection<Stats> list) {
@@ -111,11 +116,11 @@ public class TierCalculatorApp {
         });
     }
 
-    public String toCsv(String name, MagicColor.Color color, Stats stats) {
+    public String toCsv(String name, String color, Stats stats) {
         var rating = stats.rating();
         return name + "," +
                 stats.tier() + "," +
-                color.getShortName() + "," +
+                color + "," +
                 stats.gamesPlayed() + "," +
                 stats.wins() + "," +
                 stats.losses() + "," +

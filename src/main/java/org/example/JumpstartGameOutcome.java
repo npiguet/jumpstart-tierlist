@@ -3,6 +3,7 @@ package org.example;
 import de.gesundkrank.jskills.*;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Map;
 
 public record JumpstartGameOutcome(JumpstartDeck winner, JumpstartDeck loser, Duration duration, int turnCount) {
@@ -18,6 +19,13 @@ public record JumpstartGameOutcome(JumpstartDeck winner, JumpstartDeck loser, Du
                 loser.getBoosters().get(1).name() + ',' +
                 duration + ',' +
                 turnCount;
+    }
+
+    public boolean hasNoDuplicateBoosters() {
+        var boosters = new HashSet<JumpstartBooster>();
+        boosters.addAll(winner.getBoosters());
+        boosters.addAll(loser.getBoosters());
+        return boosters.size() == 4;
     }
 
     public static JumpstartGameOutcome fromCSV(String line, Map<String, JumpstartBooster> boosters) {
