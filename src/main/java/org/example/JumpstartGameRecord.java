@@ -103,4 +103,12 @@ public class JumpstartGameRecord {
         fileMonitor.setDaemon(true);
         fileMonitor.start();
     }
+
+    public Path folderPath() {
+        return this.filePath.getParent();
+    }
+
+    public String getName() {
+        return recordName;
+    }
 }

@@ -1,9 +1,11 @@
 package org.example;
 
 import de.gesundkrank.jskills.*;
-import forge.card.MagicColor;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.function.Function;
 
@@ -34,13 +36,20 @@ public class TierCalculatorApp {
         for (var record : tournament.getRecords()) {
             var statsByBooster = calculateStats(record, JumpstartDeck::getBoosters);
 
-            System.out.println("Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose");
-            statsByBooster.entrySet().stream()
-                    .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
-                    .forEach(e -> {
-                        System.out.println(toCsv(e.getKey().name(), e.getKey().color().getShortName(), e.getValue()));
-                    });
-            System.out.println("\n\n");
+            var filePath = getRatingFilePath(record, "-boosters.csv");
+            try (var out = Files.newBufferedWriter(filePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+                out.write("Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose\n");
+                statsByBooster.entrySet().stream()
+                        .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
+                        .forEach(e -> {
+                            try {
+                                out.write(toCsv(e.getKey().name(), e.getKey().color().getShortName(), e.getValue()));
+                                out.write("\n");
+                            } catch (IOException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        });
+            }
         }
     }
 
@@ -48,14 +57,29 @@ public class TierCalculatorApp {
         for (var record : tournament.getRecords()) {
             var statsByDeck = calculateStats(record, List::of);
 
-            System.out.println("Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose");
-            statsByDeck.entrySet().stream()
-                    .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
-                    .forEach(e -> {
-                        System.out.println(toCsv(e.getKey().toString(), e.getKey().color(), e.getValue()));
-                    });
-            System.out.println("\n\n");
+            var filePath = getRatingFilePath(record, "-decks.csv");
+            try (var out = Files.newBufferedWriter(filePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+                out.write("Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose\n");
+                statsByDeck.entrySet().stream()
+                        .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
+                        .forEach(e -> {
+                            try {
+                                out.write(toCsv(e.getKey().toString(), e.getKey().color(), e.getValue()));
+                                out.write("\n");
+                            } catch (IOException ex) {
+                                throw new RuntimeException(ex);
+                            }
+                        });
+            }
         }
+    }
+
+    private Path getRatingFilePath(JumpstartGameRecord record, String suffix) {
+        Path folderName = record.folderPath().getFileName();
+        return record.folderPath().getParent().getParent()
+                .resolve("ratings")
+                .resolve(folderName)
+                .resolve(record.getName() + suffix);
     }
 
     private <K> Map<K, Stats> calculateStats(JumpstartGameRecord record, Function<JumpstartDeck, List<K>> keyFunction) throws IOException {
