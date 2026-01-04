@@ -5,6 +5,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class SetBasedTournament implements Tournament {
@@ -15,15 +16,18 @@ public class SetBasedTournament implements Tournament {
     private final Path folder;
     private final Function<List<JumpstartSet>, JumpstartDeck> deckSelector;
     private final Function<List<JumpstartSet>, List<JumpstartSet>> setPerMatchSelector;
+    private final Predicate<JumpstartGameOutcome> outcomeFilter;
 
     private SetBasedTournament(List<JumpstartSet> sets,
                                String folder,
                                Function<List<JumpstartSet>, List<JumpstartSet>> setPerMatchSelector,
-                               Function<List<JumpstartSet>, JumpstartDeck> deckSelector) {
+                               Function<List<JumpstartSet>, JumpstartDeck> deckSelector,
+                               Predicate<JumpstartGameOutcome> outcomeFilter) {
         this.sets = sets;
         this.folder = Path.of(folder);
         this.setPerMatchSelector = setPerMatchSelector;
         this.deckSelector = deckSelector;
+        this.outcomeFilter = outcomeFilter;
     }
 
     @Override
@@ -46,11 +50,11 @@ public class SetBasedTournament implements Tournament {
         // oof, kinda ugly, but it works
         var selected = setPerMatchSelector.apply(sets);
         if (selected.size() == 1) {
-            return sets.stream().map(s -> new JumpstartGameRecord(s.code(), folder)).toList();
+            return sets.stream().map(s -> new JumpstartGameRecord(s.code(), folder, outcomeFilter)).toList();
         }
 
         var recordName = selected.stream().map(JumpstartSet::code).sorted().collect(Collectors.joining("-"));
-        return List.of(new JumpstartGameRecord(recordName, folder));
+        return List.of(new JumpstartGameRecord(recordName, folder, outcomeFilter));
     }
 
     public static SetBasedTournament withRandomBoosters(JumpstartEnvironment environment, boolean mixedSets) {
@@ -58,7 +62,8 @@ public class SetBasedTournament implements Tournament {
                 environment.sets(),
                 "random",
                 mixedSets ? SetBasedTournament::mixedSetsPerMatch : SetBasedTournament::singleSetPerMatch,
-                SetBasedTournament::randomBoosterDeck
+                SetBasedTournament::randomBoosterDeck,
+                JumpstartGameOutcome::hasNoDuplicateBoosters
         );
     }
 
@@ -67,7 +72,8 @@ public class SetBasedTournament implements Tournament {
                 environment.sets(),
                 "double",
                 mixedSets ? SetBasedTournament::mixedSetsPerMatch : SetBasedTournament::singleSetPerMatch,
-                SetBasedTournament::doubleBoosterDeck
+                SetBasedTournament::doubleBoosterDeck,
+                JumpstartGameOutcome::hasDifferentDecks
         );
     }
 

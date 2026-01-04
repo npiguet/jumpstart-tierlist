@@ -28,6 +28,10 @@ public record JumpstartGameOutcome(JumpstartDeck winner, JumpstartDeck loser, Du
         return boosters.size() == 4;
     }
 
+    public boolean hasDifferentDecks() {
+        return !winner.equals(loser);
+    }
+
     public static JumpstartGameOutcome fromCSV(String line, Map<String, JumpstartBooster> boosters) {
         var parts = line.split(",");
         var winner1 = boosters.get(parts[0]);
