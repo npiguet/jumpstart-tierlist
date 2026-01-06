@@ -1,4 +1,4 @@
-package org.example;
+package org.mtg.tierlist;
 
 import java.io.IOException;
 import java.time.Duration;

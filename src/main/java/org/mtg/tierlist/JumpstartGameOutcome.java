@@ -1,6 +1,4 @@
-package org.example;
-
-import de.gesundkrank.jskills.*;
+package org.mtg.tierlist;
 
 import java.time.Duration;
 import java.util.HashSet;

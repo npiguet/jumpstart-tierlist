@@ -1,4 +1,4 @@
-package org.example;
+package org.mtg.tierlist;
 
 import de.gesundkrank.jskills.*;
 
@@ -28,6 +28,7 @@ public class TierCalculatorApp {
         //var tournament = SetBasedTournament.withRandomBoosters(environment, false);
         var tournament = CubeRandomTournament.withMyCubeV2(environment);
         //var tournament = CubeRandomTournament.withMyOwnedBoosters(environment);
+        //var tournament = SetBasedTournament.withDoubleBoosters(environment, false);
 
         var ratings = new TierCalculatorApp(environment, tournament);
         ratings.printBoosterStats();

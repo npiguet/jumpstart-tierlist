@@ -1,4 +1,4 @@
-package org.example;
+package org.mtg.tierlist;
 
 import de.gesundkrank.jskills.GameInfo;
 import de.gesundkrank.jskills.Rating;

@@ -1,4 +1,4 @@
-package org.example;
+package org.mtg.tierlist;
 
 import forge.ai.LobbyPlayerAi;
 import forge.game.GameRules;

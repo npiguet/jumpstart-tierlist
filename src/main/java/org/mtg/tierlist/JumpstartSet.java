@@ -1,4 +1,4 @@
-package org.example;
+package org.mtg.tierlist;
 
 import forge.item.SealedTemplate;
 import forge.item.generation.UnOpenedProduct;

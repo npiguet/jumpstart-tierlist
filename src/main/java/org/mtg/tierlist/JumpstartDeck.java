@@ -1,4 +1,4 @@
-package org.example;
+package org.mtg.tierlist;
 
 import forge.card.MagicColor;
 import forge.deck.Deck;

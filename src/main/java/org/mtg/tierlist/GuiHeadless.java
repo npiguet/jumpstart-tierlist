@@ -1,4 +1,4 @@
-package org.example;
+package org.mtg.tierlist;
 
 import forge.gamemodes.match.HostedMatch;
 import forge.gui.download.GuiDownloadService;

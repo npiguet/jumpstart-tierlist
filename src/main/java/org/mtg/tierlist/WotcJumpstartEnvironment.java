@@ -1,4 +1,4 @@
-package org.example;
+package org.mtg.tierlist;
 
 import forge.gui.GuiBase;
 import forge.localinstance.properties.ForgePreferences;
