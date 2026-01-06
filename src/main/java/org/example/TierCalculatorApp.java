@@ -9,6 +9,8 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.function.Function;
 
+import static java.util.stream.Collectors.toMap;
+
 public class TierCalculatorApp {
 
     private final JumpstartEnvironment environment;
@@ -24,8 +26,8 @@ public class TierCalculatorApp {
         var environment = new WotcJumpstartEnvironment();
 
         //var tournament = SetBasedTournament.withRandomBoosters(environment, false);
-        //var tournament = CubeRandomTournament.withMyCube(environment);
-        var tournament = CubeRandomTournament.withMyOwnedBoosters(environment);
+        var tournament = CubeRandomTournament.withMyCubeV2(environment);
+        //var tournament = CubeRandomTournament.withMyOwnedBoosters(environment);
 
         var ratings = new TierCalculatorApp(environment, tournament);
         ratings.printBoosterStats();
@@ -34,13 +36,14 @@ public class TierCalculatorApp {
 
     private void printBoosterStats() throws IOException {
         for (var record : tournament.getRecords()) {
-            var statsByBooster = calculateStats(record, JumpstartDeck::getBoosters);
+            // There are so many games for each booster than doing more than 1 round doesn't change the booster ratings
+            var statsByBooster = calculateStats(record, JumpstartDeck::getBoosters, Stats::winRate, 1);
 
             var filePath = getRatingFilePath(record, "-boosters.csv");
             try (var out = Files.newBufferedWriter(filePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
                 out.write("Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose\n");
                 statsByBooster.entrySet().stream()
-                        .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
+                        .sorted(Comparator.comparing(e -> e.getValue().winRate(), Comparator.reverseOrder()))
                         .forEach(e -> {
                             try {
                                 out.write(toCsv(e.getKey().name(), e.getKey().color().getShortName(), e.getValue()));
@@ -55,7 +58,8 @@ public class TierCalculatorApp {
 
     private void printDeckStats() throws IOException {
         for (var record : tournament.getRecords()) {
-            var statsByDeck = calculateStats(record, List::of);
+            // There are a lot of different deck combinations. More than one round is required to get good results.
+            var statsByDeck = calculateStats(record, List::of, stats -> stats.rating().getConservativeRating(), 10);
 
             var filePath = getRatingFilePath(record, "-decks.csv");
             try (var out = Files.newBufferedWriter(filePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
@@ -82,13 +86,13 @@ public class TierCalculatorApp {
                 .resolve(record.getName() + suffix);
     }
 
-    private <K> Map<K, Stats> calculateStats(JumpstartGameRecord record, Function<JumpstartDeck, List<K>> keyFunction) throws IOException {
+    private <K> Map<K, Stats> calculateStats(JumpstartGameRecord record, Function<JumpstartDeck, List<K>> keyFunction, Function<Stats, Double> scoreFunction, int rounds) throws IOException {
         var allBoosters = environment.boosters();
         var outcomes = record.load(allBoosters);
 
         var stats = calculateWinRecord(outcomes, keyFunction);
-        calculateRatings(outcomes, keyFunction, stats, 10);
-        calculateTiers(stats.values());
+        calculateRatings(outcomes, keyFunction, stats, rounds);
+        calculateTiers(stats.values(), scoreFunction);
 
         return stats;
     }
@@ -108,6 +112,7 @@ public class TierCalculatorApp {
         for (int i = 0; i < rounds; i++) {
             var shuffled = new ArrayList<>(outcomes);
             Collections.shuffle(shuffled);
+            var statsBefore = stats.entrySet().stream().collect(toMap(Map.Entry::getKey, e -> e.getValue().rating()));
             for (var outcome : outcomes) {
                 var winTeam = new Team();
                 var loseTeam = new Team();
@@ -121,22 +126,27 @@ public class TierCalculatorApp {
                 var newRatings = TrueSkillCalculator.calculateNewRatings(gameInfo, List.of(winTeam, loseTeam), 1, 2);
                 newRatings.forEach((player, newRating) -> stats.get(((Player<K>) player).getId()).rating(newRating));
             }
-        }
 
-        // Normalize ratings so that the lowest is 0
-        var min = stats.values().stream().mapToDouble(s -> s.rating().getConservativeRating()).min().orElseThrow();
-        stats.values().stream().forEach(s -> s.rating(new Rating(s.rating().getMean() - min, s.rating().getStandardDeviation())));
+            // Normalize ratings so that the lowest is 0
+            var min = stats.values().stream().mapToDouble(s -> s.rating().getConservativeRating()).min().orElseThrow();
+            stats.values().stream().forEach(s -> s.rating(new Rating(s.rating().getMean() - min, s.rating().getStandardDeviation())));
+
+            var totalError = stats.entrySet().stream()
+                    .mapToDouble(e -> Math.abs(e.getValue().rating().getConservativeRating() - statsBefore.get(e.getKey()).getConservativeRating()))
+                    .sum();
+            System.out.println("Round " + i + " error: " + (totalError / stats.size()));
+        }
     }
 
-    private void calculateTiers(Collection<Stats> list) {
-        double high = list.stream().mapToDouble(s -> s.rating().getConservativeRating()).max().orElseThrow();
-        double low = list.stream().mapToDouble(s -> s.rating().getConservativeRating()).min().orElseThrow();
+    private void calculateTiers(Collection<Stats> list, Function<Stats, Double> scoreFunction) {
+        double high = list.stream().mapToDouble(scoreFunction::apply).max().orElseThrow();
+        double low = list.stream().mapToDouble(scoreFunction::apply).min().orElseThrow();
         double step = (high - low) / Tier.values().length;
         list.forEach(stat -> {
-            double rating = stat.rating().getConservativeRating();
+            double rating = scoreFunction.apply(stat);
             int tierIndex = Tier.values().length - (int) Math.ceil((rating - low) / step);
             // the lowest stat will get tierIndex=6, it should be normalized back to 5
-            stat.tier(Tier.values()[Math.min(tierIndex, 5)]);
+            stat.tier(Tier.values()[Math.min(tierIndex, Tier.values().length - 1)]);
         });
     }
 
