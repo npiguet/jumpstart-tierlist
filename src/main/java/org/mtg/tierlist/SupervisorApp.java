@@ -1,6 +1,7 @@
 package org.mtg.tierlist;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.ArrayList;
@@ -8,7 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 
 public class SupervisorApp {
-    private static final int PROCESS_COUNT = 24;
+    private static final int PROCESS_COUNT = 12;
     private static final String JAVA_CMD = "java";
     private static final String WORKER_CLASS = WorkerApp.class.getName();
 
@@ -30,9 +31,9 @@ public class SupervisorApp {
             monitor.start();
         }
 
-        var mixed = new JumpstartGameRecord("owned");
+        var mixed = new JumpstartGameRecord("J22-J25-JMP", Path.of("random"));
 
-        mixed.monitor(Duration.ofSeconds(30));
+        mixed.monitor(Duration.ofSeconds(1));
 
         // Keep supervisor alive
         Thread.currentThread().join();

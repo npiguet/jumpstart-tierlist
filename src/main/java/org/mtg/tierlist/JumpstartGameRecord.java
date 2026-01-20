@@ -1,5 +1,6 @@
 package org.mtg.tierlist;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
@@ -59,8 +60,10 @@ public class JumpstartGameRecord {
 
     public void monitor(Duration interval) {
         Thread fileMonitor = new Thread(() -> {
-            long lastPosition = 0;
-            Instant lastTime = Instant.now();
+            File file = filePath.toFile();
+            Instant startTime = Instant.now();
+            long newLinesSinceStart = 0;
+            long lastPosition = file.length() - 1;
 
             while (true) {
                 try {
@@ -80,19 +83,17 @@ public class JumpstartGameRecord {
                     }
 
                     Instant now = Instant.now();
-                    if (lastPosition > 0) {
-                        double seconds = Duration.between(lastTime, now).toMillis() / 1000.0;
+                    newLinesSinceStart += newLines;
+                    double seconds = Duration.between(startTime, now).toMillis() / 1000.0;
 
-                        double rate = seconds > 0 ? newLines / seconds : 0;
+                    double rate = seconds > 0 ? newLinesSinceStart / seconds : 0;
 
-                        System.out.printf(
-                                "File %s: %.2f lines/sec (%d lines in %.2f sec)%n",
-                                filePath.getFileName(), rate, newLines, seconds
-                        );
-                    }
+                    System.out.printf(
+                            "File %s: %.2f lines/sec (%d lines in %.2f sec)%n",
+                            filePath.getFileName(), rate, newLinesSinceStart, seconds
+                    );
 
                     lastPosition = newPosition;
-                    lastTime = now;
 
                 } catch (Exception e) {
                     System.err.println("File monitor error: " + e.getMessage());
