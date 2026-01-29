@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static java.util.stream.Collectors.toMap;
@@ -25,20 +26,26 @@ public class TierCalculatorApp {
     public static void main(String[] args) throws IOException {
         var environment = new WotcJumpstartEnvironment();
 
-        //var tournament = SetBasedTournament.withRandomBoosters(environment, false);
-        var tournament = CubeRandomTournament.withMyCubeV2(environment);
+        var tournament = SetBasedTournament.withRandomBoosters(environment, false);
+        //var tournament = CubeRandomTournament.withMyCubeV2(environment);
         //var tournament = CubeRandomTournament.withMyOwnedBoosters(environment);
         //var tournament = SetBasedTournament.withDoubleBoosters(environment, false);
 
         var ratings = new TierCalculatorApp(environment, tournament);
         ratings.printBoosterStats();
         ratings.printDeckStats();
+        ratings.printCardStats();
     }
 
     private void printBoosterStats() throws IOException {
         for (var record : tournament.getRecords()) {
             // There are so many games for each booster than doing more than 1 round doesn't change the booster ratings
-            var statsByBooster = calculateStats(record, JumpstartDeck::getBoosters, Stats::winRate, 1);
+            var statsByBooster = calculateStats(
+                    record,
+                    (outcome, deck) -> deck.getBoosters(),
+                    Stats::winRate,
+                    5
+            );
 
             var filePath = getRatingFilePath(record, "-boosters.csv");
             try (var out = Files.newBufferedWriter(filePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
@@ -60,7 +67,12 @@ public class TierCalculatorApp {
     private void printDeckStats() throws IOException {
         for (var record : tournament.getRecords()) {
             // There are a lot of different deck combinations. More than one round is required to get good results.
-            var statsByDeck = calculateStats(record, List::of, stats -> stats.rating().getConservativeRating(), 10);
+            var statsByDeck = calculateStats(
+                    record,
+                    (outcome, deck) -> List.of(deck),
+                    stats -> stats.rating().getConservativeRating(),
+                    20
+            );
 
             var filePath = getRatingFilePath(record, "-decks.csv");
             try (var out = Files.newBufferedWriter(filePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
@@ -79,6 +91,36 @@ public class TierCalculatorApp {
         }
     }
 
+    private void printCardStats() throws IOException {
+        for (var record : tournament.getRecords()) {
+            try {
+                var statsByCard = calculateStats(
+                        record,
+                        JumpstartGameOutcome::getQualifiedCardsPlayed,
+                        stats -> stats.rating().getConservativeRating(),
+                        20);
+
+                var filePath = getRatingFilePath(record, "-cards.csv");
+                try (var out = Files.newBufferedWriter(filePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+                    out.write("Pack,Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose\n");
+                    statsByCard.entrySet().stream()
+                            .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
+                            .forEach(e -> {
+                                try {
+                                    out.write(toCsv(e.getKey().toString(), "-", e.getValue()));
+                                    out.write("\n");
+                                } catch (IOException ex) {
+                                    throw new RuntimeException(ex);
+                                }
+                            });
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     private Path getRatingFilePath(JumpstartGameRecord record, String suffix) {
         Path folderName = record.folderPath().getFileName();
         return record.folderPath().getParent().getParent()
@@ -87,7 +129,7 @@ public class TierCalculatorApp {
                 .resolve(record.getName() + suffix);
     }
 
-    private <K> Map<K, Stats> calculateStats(JumpstartGameRecord record, Function<JumpstartDeck, List<K>> keyFunction, Function<Stats, Double> scoreFunction, int rounds) throws IOException {
+    private <K> Map<K, Stats> calculateStats(JumpstartGameRecord record, BiFunction<JumpstartGameOutcome, JumpstartDeck, List<K>> keyFunction, Function<Stats, Double> scoreFunction, int rounds) throws IOException {
         var allBoosters = environment.boosters();
         var outcomes = record.load(allBoosters);
 
@@ -98,18 +140,18 @@ public class TierCalculatorApp {
         return stats;
     }
 
-    private <K> Map<K, Stats> calculateWinRecord(List<JumpstartGameOutcome> allOutcomes, Function<JumpstartDeck, List<K>> keyFunction) {
+    private <K> Map<K, Stats> calculateWinRecord(List<JumpstartGameOutcome> allOutcomes, BiFunction<JumpstartGameOutcome, JumpstartDeck, List<K>> keyFunction) {
         var stats = new HashMap<K, Stats>();
         for (var outcome : allOutcomes) {
-            var winKeys = keyFunction.apply(outcome.winner());
+            var winKeys = keyFunction.apply(outcome, outcome.winner());
             winKeys.forEach(k -> stats.computeIfAbsent(k, k2 -> new Stats(gameInfo)).recordWin(outcome.turnCount()));
-            var loseKeys = keyFunction.apply(outcome.loser());
+            var loseKeys = keyFunction.apply(outcome, outcome.loser());
             loseKeys.forEach(k -> stats.computeIfAbsent(k, k2 -> new Stats(gameInfo)).recordLoss(outcome.turnCount()));
         }
         return stats;
     }
 
-    private <K> void calculateRatings(List<JumpstartGameOutcome> outcomes, Function<JumpstartDeck, List<K>> keyFunction, Map<K, Stats> stats, int rounds) throws IOException {
+    private <K> void calculateRatings(List<JumpstartGameOutcome> outcomes, BiFunction<JumpstartGameOutcome, JumpstartDeck, List<K>> keyFunction, Map<K, Stats> stats, int rounds) throws IOException {
         for (int i = 0; i < rounds; i++) {
             var shuffled = new ArrayList<>(outcomes);
             Collections.shuffle(shuffled);
@@ -118,8 +160,15 @@ public class TierCalculatorApp {
                 var winTeam = new Team();
                 var loseTeam = new Team();
 
-                var winKeys = keyFunction.apply(outcome.winner());
-                var loseKeys = keyFunction.apply(outcome.loser());
+                var winKeys = keyFunction.apply(outcome, outcome.winner());
+                var loseKeys = keyFunction.apply(outcome, outcome.loser());
+
+                if (winKeys.isEmpty() || loseKeys.isEmpty()) {
+                    // if for some reason one of the teams is empty, just ignore that match. We have so many in the
+                    // dataset that this is unlikely to matter too much. This can happen when a player is not able to
+                    // cast even a single spell during a game.
+                    continue;
+                }
 
                 winKeys.forEach(k -> winTeam.addPlayer(new Player<>(k), stats.get(k).rating()));
                 loseKeys.forEach(k -> loseTeam.addPlayer(new Player<>(k), stats.get(k).rating()));

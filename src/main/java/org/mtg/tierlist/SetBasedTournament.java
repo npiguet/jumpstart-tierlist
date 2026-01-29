@@ -60,7 +60,7 @@ public class SetBasedTournament implements Tournament {
     public static SetBasedTournament withRandomBoosters(JumpstartEnvironment environment, boolean mixedSets) {
         return new SetBasedTournament(
                 environment.sets(),
-                "random",
+                "random-withcards",
                 mixedSets ? SetBasedTournament::mixedSetsPerMatch : SetBasedTournament::singleSetPerMatch,
                 SetBasedTournament::randomBoosterDeck,
                 JumpstartGameOutcome::hasNoDuplicateBoosters
@@ -70,7 +70,7 @@ public class SetBasedTournament implements Tournament {
     public static SetBasedTournament withDoubleBoosters(JumpstartEnvironment environment, boolean mixedSets) {
         return new SetBasedTournament(
                 environment.sets(),
-                "double",
+                "double-withcards",
                 mixedSets ? SetBasedTournament::mixedSetsPerMatch : SetBasedTournament::singleSetPerMatch,
                 SetBasedTournament::doubleBoosterDeck,
                 JumpstartGameOutcome::hasDifferentDecks

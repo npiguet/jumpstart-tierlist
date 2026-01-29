@@ -31,9 +31,14 @@ public class SupervisorApp {
             monitor.start();
         }
 
-        var mixed = new JumpstartGameRecord("J22-J25-JMP", Path.of("random"));
+        var jmp = new JumpstartGameRecord("JMP", Path.of("random-withcards"));
+        var j22 = new JumpstartGameRecord("J22", Path.of("random-withcards"));
+        var j25 = new JumpstartGameRecord("J25", Path.of("random-withcards"));
 
-        mixed.monitor(Duration.ofSeconds(1));
+        jmp.monitor(Duration.ofSeconds(1));
+        j22.monitor(Duration.ofSeconds(1));
+        j25.monitor(Duration.ofSeconds(1));
+
 
         // Keep supervisor alive
         Thread.currentThread().join();

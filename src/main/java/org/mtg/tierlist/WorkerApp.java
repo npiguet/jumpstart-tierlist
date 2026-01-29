@@ -22,7 +22,8 @@ public class WorkerApp {
         var environment = new WotcJumpstartEnvironment();
 
 //        var tournament = CubeRandomTournament.withMyOwnedBoosters(environment);
-//        var tournament = CubeRandomTournament.withMyCube(environment);
+//        var tournament = CubeRandomTournament.withMyCubeV2(environment);
+//        var tournament = SetBasedTournament.withRandomBoosters(environment, true);
         var tournament = SetBasedTournament.withRandomBoosters(environment, false);
 //        var tournament = SetBasedTournament.withDoubleBoosters(environment, true);
 

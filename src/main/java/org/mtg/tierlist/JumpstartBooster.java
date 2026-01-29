@@ -3,21 +3,24 @@ package org.mtg.tierlist;
 import forge.card.MagicColor;
 import forge.item.PaperCard;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toSet;
 
 public class JumpstartBooster {
 
     private final String setCode;
     private final String name;
     private final List<PaperCard> cards;
+    private final Set<String> cardNames;
     private final MagicColor.Color color;
 
     public JumpstartBooster(String setCode, String name, List<PaperCard> cards) {
         this.setCode = setCode;
         this.name = name;
         this.cards = cards;
+        this.cardNames = cards.stream().map(PaperCard::getName).collect(toSet());
         this.color = cards.stream()
                 .map(JumpstartBooster::getCardColorIfSingle)
                 .filter(Objects::nonNull)
@@ -39,6 +42,10 @@ public class JumpstartBooster {
 
     public MagicColor.Color color() {
         return color;
+    }
+
+    public boolean containsCard(String cardName) {
+        return cardNames.contains(cardName);
     }
 
     public static List<MagicColor.Color> colors(List<JumpstartBooster> boosters) {
