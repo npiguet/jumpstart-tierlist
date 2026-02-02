@@ -7,9 +7,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.toMap;
 
 public class TierCalculatorApp {
@@ -51,7 +53,7 @@ public class TierCalculatorApp {
             try (var out = Files.newBufferedWriter(filePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
                 out.write("Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose\n");
                 statsByBooster.entrySet().stream()
-                        .sorted(Comparator.comparing(e -> e.getValue().winRate(), Comparator.reverseOrder()))
+                        .sorted(comparing(e -> e.getValue().winRate(), Comparator.reverseOrder()))
                         .forEach(e -> {
                             try {
                                 out.write(toCsv(e.getKey().name(), e.getKey().color().getShortName(), e.getValue()));
@@ -78,7 +80,7 @@ public class TierCalculatorApp {
             try (var out = Files.newBufferedWriter(filePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
                 out.write("Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose\n");
                 statsByDeck.entrySet().stream()
-                        .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
+                        .sorted(comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
                         .forEach(e -> {
                             try {
                                 out.write(toCsv(e.getKey().toString(), e.getKey().color(), e.getValue()));
@@ -96,18 +98,20 @@ public class TierCalculatorApp {
             try {
                 var statsByCard = calculateStats(
                         record,
-                        JumpstartGameOutcome::getQualifiedCardsPlayed,
+                        JumpstartGameOutcome::getCardsPlayed,
                         stats -> stats.rating().getConservativeRating(),
-                        20);
+                        3);
 
                 var filePath = getRatingFilePath(record, "-cards.csv");
                 try (var out = Files.newBufferedWriter(filePath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
-                    out.write("Pack,Name,Tier,Color,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Turns to Win,Turns to Lose\n");
+                    out.write("Pack,nCopies,Card,Mana Cost,Adj. Games Played,Adj. Wins,Adj. Losses,Games Played,Wins,Losses,Win Rate,Conservative Rating,Mean,StdDev,Tier,Turns to Win,Turns to Lose\n");
                     statsByCard.entrySet().stream()
-                            .sorted(Comparator.comparing(e -> e.getValue().rating().getConservativeRating(), Comparator.reverseOrder()))
+                            .sorted(Comparator.<Entry<JumpstartCard, Stats>, String>comparing(e -> e.getKey().booster().name())
+                                    .thenComparing(e -> e.getKey().adjustedGameCount(e.getValue().wins()), Comparator.reverseOrder())
+                            )
                             .forEach(e -> {
                                 try {
-                                    out.write(toCsv(e.getKey().toString(), "-", e.getValue()));
+                                    out.write(toCsv(e.getKey(), e.getValue()));
                                     out.write("\n");
                                 } catch (IOException ex) {
                                     throw new RuntimeException(ex);
@@ -129,7 +133,7 @@ public class TierCalculatorApp {
                 .resolve(record.getName() + suffix);
     }
 
-    private <K> Map<K, Stats> calculateStats(JumpstartGameRecord record, BiFunction<JumpstartGameOutcome, JumpstartDeck, List<K>> keyFunction, Function<Stats, Double> scoreFunction, int rounds) throws IOException {
+    private <K> Map<K, Stats> calculateStats(JumpstartGameRecord record, BiFunction<JumpstartGameOutcome, JumpstartDeck, ? extends Collection<K>> keyFunction, Function<Stats, Double> scoreFunction, int rounds) throws IOException {
         var allBoosters = environment.boosters();
         var outcomes = record.load(allBoosters);
 
@@ -140,41 +144,49 @@ public class TierCalculatorApp {
         return stats;
     }
 
-    private <K> Map<K, Stats> calculateWinRecord(List<JumpstartGameOutcome> allOutcomes, BiFunction<JumpstartGameOutcome, JumpstartDeck, List<K>> keyFunction) {
+    private <K> Map<K, Stats> calculateWinRecord(List<JumpstartGameOutcome> allOutcomes, BiFunction<JumpstartGameOutcome, JumpstartDeck, ? extends Collection<K>> keyFunction) {
         var stats = new HashMap<K, Stats>();
         for (var outcome : allOutcomes) {
-            var winKeys = keyFunction.apply(outcome, outcome.winner());
-            winKeys.forEach(k -> stats.computeIfAbsent(k, k2 -> new Stats(gameInfo)).recordWin(outcome.turnCount()));
-            var loseKeys = keyFunction.apply(outcome, outcome.loser());
-            loseKeys.forEach(k -> stats.computeIfAbsent(k, k2 -> new Stats(gameInfo)).recordLoss(outcome.turnCount()));
+            try {
+                var winKeys = keyFunction.apply(outcome, outcome.winner());
+                var loseKeys = keyFunction.apply(outcome, outcome.loser());
+                winKeys.forEach(k -> stats.computeIfAbsent(k, k2 -> new Stats(gameInfo)).recordWin(outcome.turnCount()));
+                loseKeys.forEach(k -> stats.computeIfAbsent(k, k2 -> new Stats(gameInfo)).recordLoss(outcome.turnCount()));
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
         }
         return stats;
     }
 
-    private <K> void calculateRatings(List<JumpstartGameOutcome> outcomes, BiFunction<JumpstartGameOutcome, JumpstartDeck, List<K>> keyFunction, Map<K, Stats> stats, int rounds) throws IOException {
+    private <K> void calculateRatings(List<JumpstartGameOutcome> outcomes, BiFunction<JumpstartGameOutcome, JumpstartDeck, ? extends Collection<K>> keyFunction, Map<K, Stats> stats, int rounds) throws IOException {
         for (int i = 0; i < rounds; i++) {
             var shuffled = new ArrayList<>(outcomes);
             Collections.shuffle(shuffled);
             var statsBefore = stats.entrySet().stream().collect(toMap(Map.Entry::getKey, e -> e.getValue().rating()));
             for (var outcome : outcomes) {
-                var winTeam = new Team();
-                var loseTeam = new Team();
+                try {
+                    var winTeam = new Team();
+                    var loseTeam = new Team();
 
-                var winKeys = keyFunction.apply(outcome, outcome.winner());
-                var loseKeys = keyFunction.apply(outcome, outcome.loser());
+                    var winKeys = keyFunction.apply(outcome, outcome.winner());
+                    var loseKeys = keyFunction.apply(outcome, outcome.loser());
 
-                if (winKeys.isEmpty() || loseKeys.isEmpty()) {
-                    // if for some reason one of the teams is empty, just ignore that match. We have so many in the
-                    // dataset that this is unlikely to matter too much. This can happen when a player is not able to
-                    // cast even a single spell during a game.
-                    continue;
+                    if (winKeys.isEmpty() || loseKeys.isEmpty()) {
+                        // if for some reason one of the teams is empty, just ignore that match. We have so many in the
+                        // dataset that this is unlikely to matter too much. This can happen when a player is not able to
+                        // cast even a single spell during a game.
+                        continue;
+                    }
+
+                    winKeys.forEach(k -> winTeam.addPlayer(new Player<>(k), stats.get(k).rating()));
+                    loseKeys.forEach(k -> loseTeam.addPlayer(new Player<>(k), stats.get(k).rating()));
+
+                    var newRatings = TrueSkillCalculator.calculateNewRatings(gameInfo, List.of(winTeam, loseTeam), 1, 2);
+                    newRatings.forEach((player, newRating) -> stats.get(((Player<K>) player).getId()).rating(newRating));
+                } catch(Exception e){
+                    e.printStackTrace();
                 }
-
-                winKeys.forEach(k -> winTeam.addPlayer(new Player<>(k), stats.get(k).rating()));
-                loseKeys.forEach(k -> loseTeam.addPlayer(new Player<>(k), stats.get(k).rating()));
-
-                var newRatings = TrueSkillCalculator.calculateNewRatings(gameInfo, List.of(winTeam, loseTeam), 1, 2);
-                newRatings.forEach((player, newRating) -> stats.get(((Player<K>) player).getId()).rating(newRating));
             }
 
             // Normalize ratings so that the lowest is 0
@@ -215,4 +227,26 @@ public class TierCalculatorApp {
                 stats.averageTurnsTakenToWin() + "," +
                 stats.averageTurnsTakenToLose();
     }
+
+    public String toCsv(JumpstartCard card, Stats stats) {
+        var rating = stats.rating();
+        return card.booster().name() + "," +
+                card.nCopies() + "," +
+                "\"" + card.card().getName() + "\"," +
+                card.card().getRules().getManaCost() + "," +
+                card.adjustedGameCount(stats.gamesPlayed()) + "," +
+                card.adjustedGameCount(stats.wins()) + "," +
+                card.adjustedGameCount(stats.losses()) + "," +
+                stats.gamesPlayed() + "," +
+                stats.wins() + "," +
+                stats.losses() + "," +
+                stats.winRate() + "," +
+                rating.getConservativeRating() + "," +
+                rating.getMean() + "," +
+                rating.getStandardDeviation() + "," +
+                stats.tier() + "," +
+                stats.averageTurnsTakenToWin() + "," +
+                stats.averageTurnsTakenToLose();
+    }
+
 }

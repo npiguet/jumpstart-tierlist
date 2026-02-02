@@ -4,23 +4,30 @@ import forge.card.MagicColor;
 import forge.item.PaperCard;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.*;
 
 public class JumpstartBooster {
 
     private final String setCode;
     private final String name;
-    private final List<PaperCard> cards;
-    private final Set<String> cardNames;
+    private final Map<String, JumpstartCard> cards;
     private final MagicColor.Color color;
 
     public JumpstartBooster(String setCode, String name, List<PaperCard> cards) {
         this.setCode = setCode;
         this.name = name;
-        this.cards = cards;
-        this.cardNames = cards.stream().map(PaperCard::getName).collect(toSet());
+        this.cards = cards.stream()
+                .collect(groupingBy(Function.identity(), Collectors.counting()))
+                .entrySet()
+                .stream()
+                .map(e -> new JumpstartCard(e.getKey(), this, e.getValue().intValue()))
+                .collect(toMap(
+                        c -> c.card().getName(),
+                        Function.identity()
+                ));
         this.color = cards.stream()
                 .map(JumpstartBooster::getCardColorIfSingle)
                 .filter(Objects::nonNull)
@@ -29,7 +36,10 @@ public class JumpstartBooster {
     }
 
     public List<PaperCard> cards() {
-        return cards;
+        return cards.values()
+                .stream()
+                .flatMap(c -> Collections.nCopies(c.nCopies(), c.card()).stream())
+                .toList();
     }
 
     public String name() {
@@ -37,15 +47,11 @@ public class JumpstartBooster {
     }
 
     public String toString() {
-        return name + cards;
+        return name + cards.values();
     }
 
     public MagicColor.Color color() {
         return color;
-    }
-
-    public boolean containsCard(String cardName) {
-        return cardNames.contains(cardName);
     }
 
     public static List<MagicColor.Color> colors(List<JumpstartBooster> boosters) {
@@ -64,6 +70,10 @@ public class JumpstartBooster {
             return null;
         }
         return MagicColor.Color.fromByte(colorProfile);
+    }
+
+    public Optional<JumpstartCard> getCard(String cardName) {
+        return Optional.ofNullable(cards.get(cardName));
     }
 
     @Override

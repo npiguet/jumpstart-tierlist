@@ -55,25 +55,15 @@ public record JumpstartGameOutcome(
         return !winner.equals(loser);
     }
 
-    public List<String> getQualifiedCardsPlayed(JumpstartDeck deck) {
+    public Set<JumpstartCard> getCardsPlayed(JumpstartDeck deck) {
         if (this.winner.equals(deck)) {
             return winnerCards.stream()
-                    .map(card -> addPackName(card, this.winner))
-                    .toList();
+                    .flatMap(cardName -> winner.getCards(cardName).stream())
+                    .collect(toSet());
         }
         return loserCards.stream()
-                .map(card -> addPackName(card, this.loser))
-                .toList();
-    }
-
-    private static String addPackName(String cardName, JumpstartDeck deck) {
-        return deck.getBoosters().stream()
-                .filter(booster -> booster.containsCard(cardName))
-                .findFirst()
-                .map(booster -> booster.name() + ",\"" + cardName + "\"")
-                .orElseThrow(() -> new NoSuchElementException(
-                        "Couldn't find booster for [" + cardName + "] in deck [" + deck + "] with boosters [" + deck.getBoosters() + "]"
-                ));
+                .flatMap(cardName -> loser.getCards(cardName).stream())
+                .collect(toSet());
     }
 
     public static JumpstartGameOutcome fromCSV(String line, Map<String, JumpstartBooster> boosters) {

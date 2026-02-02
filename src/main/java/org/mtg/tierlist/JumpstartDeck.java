@@ -4,9 +4,7 @@ import forge.card.MagicColor;
 import forge.deck.Deck;
 import forge.deck.DeckSection;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -40,6 +38,15 @@ public class JumpstartDeck {
         var main = deck.getOrCreate(DeckSection.Main);
         boosters.forEach(b -> main.add(b.cards()));
         return deck;
+    }
+
+    /**
+     * Returns a Set because a card with the specified name can exist in both boosters of the deck
+     */
+    public Set<JumpstartCard> getCards(String cardName) {
+        return boosters.stream()
+                .flatMap(booster -> booster.getCard(cardName).stream())
+                .collect(Collectors.toSet());
     }
 
     public String toString() {
