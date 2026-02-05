@@ -13,3 +13,4 @@ Feel free to use the code or the datasets to run your own analysis.
 - [Jumpstart 2022 (J22)](./analysis/J22.md)
 - [Foundations Jumpstart (J25)](./analysis/J25.md)
 - [All 3 jumpstart sets together](./analysis/J22-J25-JMP.md)
+- [Card-level analysis of all Jumpstart sets](./analysis/J22-J25-JMP-Cards-Details.md)
